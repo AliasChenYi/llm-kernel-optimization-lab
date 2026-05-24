@@ -95,6 +95,14 @@ tests/                      Correctness tests
 4. 实现 int8/int4 LLM inference 路径中的 dequantization kernels。
 5. 使用 Nsight Compute 等工具沉淀 profiling notes，记录关键 tuning decisions。
 
+## Profiling
+
+RMSNorm profiling 的工具选择、指标含义和命令入口见：
+
+```text
+docs/rmsnorm_profiling_guide.md
+```
+
 ## 当前服务器环境
 
 - Python virtualenv: `.venv`
@@ -102,4 +110,3 @@ tests/                      Correctness tests
 - Triton: `3.1.0`
 - CUDA Toolkit: `/usr/local/cuda-12.2`
 - user-local Python headers: `/home/chendepeng/.local/python3.10-dev-root`
-
