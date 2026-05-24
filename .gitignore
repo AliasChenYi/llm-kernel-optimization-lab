@@ -1,0 +1,13 @@
+.pytest_cache/
+__pycache__/
+*.egg-info/
+*.so
+*.pyd
+*.ptx
+*.cubin
+.venv/
+venv/
+build/
+dist/
+results/
+
