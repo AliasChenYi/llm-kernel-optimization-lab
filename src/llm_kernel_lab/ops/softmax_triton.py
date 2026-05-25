@@ -26,16 +26,37 @@ if triton is not None:
 
         tl.store(y_ptr + row_id * hidden_size + offsets, y, mask=mask)
 
+    @triton.jit
+    def _softmax_exp2_kernel(x_ptr, y_ptr, hidden_size: tl.constexpr, block: tl.constexpr):
+        row_id = tl.program_id(0)
+        offsets = tl.arange(0, block)
+        mask = offsets < hidden_size
 
-def _num_warps(block: int) -> int:
+        x = tl.load(x_ptr + row_id * hidden_size + offsets, mask=mask, other=-float("inf")).to(tl.float32)
+        x = (x - tl.max(x, axis=0)) * 1.4426950408889634
+        numerator = tl.exp2(x)
+        denominator = tl.sum(numerator, axis=0)
+        y = numerator / denominator
+
+        tl.store(y_ptr + row_id * hidden_size + offsets, y, mask=mask)
+
+
+def _num_warps(block: int, dtype: torch.dtype) -> int:
+    if dtype == torch.float16:
+        if block <= 2048:
+            return 4
+        if block <= 4096:
+            return 8
+        return 16
+
     if block <= 1024:
         return 4
-    if block <= 4096:
+    if block <= 2048:
         return 8
     return 16
 
 
-def softmax_triton(x: torch.Tensor) -> torch.Tensor:
+def softmax_triton(x: torch.Tensor, *, variant: str = "default", num_warps: int | None = None) -> torch.Tensor:
     """Triton row-wise softmax for contiguous tensors shaped [..., hidden_size]."""
     if triton is None:
         raise RuntimeError("Triton is not installed.")
@@ -50,7 +71,10 @@ def softmax_triton(x: torch.Tensor) -> torch.Tensor:
     if block > 65536:
         raise ValueError(f"hidden_size={hidden_size} is too large for the single-block Softmax kernel.")
 
-    grid = (x_2d.shape[0],)
-    _softmax_kernel[grid](x_2d, y, hidden_size, block, num_warps=_num_warps(block))
-    return y.view_as(x)
+    if variant not in {"default", "exp2"}:
+        raise ValueError(f"unsupported Softmax variant: {variant}")
 
+    kernel = _softmax_exp2_kernel if variant == "exp2" else _softmax_kernel
+    grid = (x_2d.shape[0],)
+    kernel[grid](x_2d, y, hidden_size, block, num_warps=num_warps or _num_warps(block, x_2d.dtype))
+    return y.view_as(x)

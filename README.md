@@ -103,6 +103,12 @@ RMSNorm profiling 的工具选择、指标含义和命令入口见：
 docs/rmsnorm_profiling_guide.md
 ```
 
+RMSNorm 与 Softmax 的第一轮优化记录见：
+
+```text
+docs/optimization_log_2026_05_25.md
+```
+
 ## 当前服务器环境
 
 - Python virtualenv: `.venv`
